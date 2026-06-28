@@ -10,7 +10,7 @@ const UPLOAD_DIR = APP_ROOT . '/uploads';
 const SESSION_DIR = APP_ROOT . '/data/sessions';
 
 if (!is_dir(UPLOAD_DIR)) {
-    mkdir(UPLOAD_DIR, 0777, true);
+    @mkdir(UPLOAD_DIR, 0777, true);
 }
 
 if (!file_exists(CONFIG_FILE)) {
