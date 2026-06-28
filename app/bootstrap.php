@@ -67,7 +67,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST' && !csrf_should_skip()) {
     }
 }
 
-ob_start('inject_csrf_token');
+// ob_start('inject_csrf_token'); // Vercel WSOD fix
 
 function csrf_should_skip(): bool
 {
