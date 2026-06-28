@@ -1,0 +1,22 @@
+<?php
+return [
+    'db_host' => 'localhost',
+    'db_port' => '3306',
+    'db_name' => 'lojistco_bank',
+    'db_user' => 'root',
+    'db_pass' => '',
+    'db_charset' => 'utf8mb4',
+    'app_env' => 'local',
+    'app_url' => 'http://localhost',
+    'marketing_lock_enabled' => false,
+    'marketing_admin_key' => 'lojist-admin-2026',
+    'asaas_environment' => 'production',
+    'asaas_api_key' => 'COLE_AQUI_SUA_API_KEY_DO_ASAAS',
+    'asaas_webhook_token' => 'COLE_AQUI_UM_TOKEN_FORTE_DO_WEBHOOK',
+    'payment_provider' => 'asaas',
+    'infinitepay_handle' => 'COLE_AQUI_SEU_HANDLE',
+    'infinitepay_webhook_secret' => 'COLE_AQUI_UM_TOKEN_FORTE_INFINITYPAY',
+    'mail_from' => 'naoresponda@lojist.com.br',
+    'mail_from_name' => 'LOJIST',
+    'mail_reply_to' => 'naoresponda@lojist.com.br',
+];

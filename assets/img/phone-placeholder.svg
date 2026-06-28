@@ -1,0 +1,41 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="900" viewBox="0 0 900 900" role="img" aria-label="Aparelho LOJIST">
+  <defs>
+    <linearGradient id="case" x1="0" x2="1">
+      <stop offset="0" stop-color="#0b0d13"/>
+      <stop offset=".12" stop-color="#343743"/>
+      <stop offset=".3" stop-color="#0c0f17"/>
+      <stop offset=".75" stop-color="#05070d"/>
+      <stop offset="1" stop-color="#4d5160"/>
+    </linearGradient>
+    <linearGradient id="screen" x1=".15" y1=".05" x2=".85" y2=".95">
+      <stop offset="0" stop-color="#10131f"/>
+      <stop offset=".22" stop-color="#093b83"/>
+      <stop offset=".52" stop-color="#02050d"/>
+      <stop offset=".74" stop-color="#0078e8"/>
+      <stop offset="1" stop-color="#001a3d"/>
+    </radialGradient>
+    <radialGradient id="glow" cx=".78" cy=".18" r=".75">
+      <stop offset="0" stop-color="#00c2ff" stop-opacity=".55"/>
+      <stop offset=".55" stop-color="#0085ff" stop-opacity=".13"/>
+      <stop offset="1" stop-color="#06101f" stop-opacity="0"/>
+    </radialGradient>
+    <filter id="soft" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="18"/>
+    </filter>
+  </defs>
+  <rect width="900" height="900" fill="#07111f"/>
+  <rect width="900" height="900" fill="url(#glow)"/>
+  <ellipse cx="470" cy="804" rx="190" ry="32" fill="#000" opacity=".42" filter="url(#soft)"/>
+  <rect x="276" y="72" width="348" height="750" rx="72" fill="url(#case)"/>
+  <rect x="292" y="88" width="316" height="718" rx="58" fill="#05070d"/>
+  <rect x="307" y="105" width="286" height="684" rx="45" fill="url(#screen)"/>
+  <path d="M307 105h286v684H307z" fill="none" stroke="#ffffff" stroke-opacity=".08" stroke-width="2"/>
+  <path d="M332 120c84 42 128 130 102 263-24 121-8 220 86 316" fill="none" stroke="#61d5ff" stroke-opacity=".34" stroke-width="26" filter="url(#soft)"/>
+  <path d="M565 132c-72 210-158 340-235 620" fill="none" stroke="#fff" stroke-opacity=".08" stroke-width="54"/>
+  <rect x="397" y="128" width="106" height="30" rx="15" fill="#02040a"/>
+  <circle cx="485" cy="143" r="6" fill="#151d2c"/>
+  <text x="450" y="468" text-anchor="middle" font-family="Arial, sans-serif" font-size="68" font-weight="900" fill="#ffffff" opacity=".44" transform="rotate(-22 450 468)">LOJIST</text>
+  <text x="452" y="468" text-anchor="middle" font-family="Arial, sans-serif" font-size="68" font-weight="900" fill="#0085ff" opacity=".22" transform="rotate(-22 452 468)">LOJIST</text>
+  <rect x="264" y="238" width="8" height="86" rx="4" fill="#d6e6f8" opacity=".7"/>
+  <rect x="628" y="318" width="8" height="118" rx="4" fill="#28384c"/>
+</svg>

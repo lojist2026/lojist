@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128" role="img" aria-label="LOJIST">
+  <defs>
+    <linearGradient id="b" x1="18" x2="110" y1="18" y2="110" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#00c2ff"/>
+      <stop offset=".55" stop-color="#0085ff"/>
+      <stop offset="1" stop-color="#0d1a2c"/>
+    </linearGradient>
+  </defs>
+  <rect x="10" y="10" width="108" height="108" rx="24" fill="#06101f" stroke="#163557" stroke-width="3"/>
+  <path d="M36 30h18v52h38v16H36V30Z" fill="url(#b)"/>
+  <path d="M75 30h17v17H75V30Zm0 25h17v43H75V55Z" fill="#fff"/>
+  <circle cx="94" cy="34" r="7" fill="#00c2ff"/>
+</svg>

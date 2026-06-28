@@ -1,0 +1,22 @@
+<?php
+return [
+    'db_host' => getenv('DB_HOST') ?: 'localhost',
+    'db_port' => getenv('DB_PORT') ?: '3306',
+    'db_name' => getenv('DB_NAME') ?: 'lojist',
+    'db_user' => getenv('DB_USER') ?: 'root',
+    'db_pass' => getenv('DB_PASS') !== false ? getenv('DB_PASS') : '',
+    'db_charset' => getenv('DB_CHARSET') ?: 'utf8mb4',
+    'app_env' => getenv('APP_ENV') ?: 'local',
+    'app_url' => getenv('APP_URL') ?: 'http://localhost/lojist',
+    'marketing_lock_enabled' => getenv('MARKETING_LOCK_ENABLED') === 'true',
+    'marketing_admin_key' => getenv('MARKETING_ADMIN_KEY') ?: 'lojist-admin-2026',
+    'asaas_environment' => getenv('ASAAS_ENVIRONMENT') ?: 'production',
+    'asaas_api_key' => getenv('ASAAS_API_KEY') ?: 'COLE_AQUI_SUA_API_KEY_DO_ASAAS',
+    'asaas_webhook_token' => getenv('ASAAS_WEBHOOK_TOKEN') ?: 'COLE_AQUI_UM_TOKEN_FORTE_DO_WEBHOOK',
+    'payment_provider' => getenv('PAYMENT_PROVIDER') ?: 'asaas',
+    'infinitepay_handle' => getenv('INFINITEPAY_HANDLE') ?: 'COLE_AQUI_SEU_HANDLE',
+    'infinitepay_webhook_secret' => getenv('INFINITEPAY_WEBHOOK_SECRET') ?: 'COLE_AQUI_UM_TOKEN_FORTE_INFINITYPAY',
+    'mail_from' => getenv('MAIL_FROM') ?: 'naoresponda@lojist.com.br',
+    'mail_from_name' => getenv('MAIL_FROM_NAME') ?: 'LOJIST',
+    'mail_reply_to' => getenv('MAIL_REPLY_TO') ?: 'naoresponda@lojist.com.br',
+];

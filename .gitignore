@@ -1,0 +1,10 @@
+/uploads/*
+!/uploads/.gitkeep
+/logs/*
+!/logs/.gitkeep
+/data/*
+!/data/.gitkeep
+lojist_config.local.php
+.env
+.DS_Store
+Thumbs.db
