@@ -13,6 +13,10 @@ if ($page === 'init_db') {
     require __DIR__ . '/api/init_pg.php';
     exit;
 }
+if ($page === 'check_db') {
+    require __DIR__ . '/api/check_users.php';
+    exit;
+}
 
 $flash = flash();
 
