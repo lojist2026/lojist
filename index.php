@@ -8,6 +8,12 @@ require_once __DIR__ . '/app/features.php';
 $config = app_config();
 
 $page = $_GET['p'] ?? 'landing';
+
+if ($page === 'init_db') {
+    require __DIR__ . '/api/init_pg.php';
+    exit;
+}
+
 $flash = flash();
 
 if (isset($_GET['admin_key']) && hash_equals((string)($config['marketing_admin_key'] ?? ''), (string)$_GET['admin_key'])) {
