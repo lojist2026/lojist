@@ -2,13 +2,24 @@
 require_once __DIR__ . "/../app/bootstrap.php";
 
 $pdo = db();
-$check = $pdo->query("SELECT to_regclass('public.users')")->fetchColumn();
-if ($check) {
-    echo "Banco de dados já foi inicializado!";
-    exit;
-}
-
 $schema = <<<SQL
+DROP TABLE IF EXISTS plans CASCADE;
+DROP TABLE IF EXISTS users CASCADE;
+DROP TABLE IF EXISTS products CASCADE;
+DROP TABLE IF EXISTS orders CASCADE;
+DROP TABLE IF EXISTS order_events CASCADE;
+DROP TABLE IF EXISTS offers CASCADE;
+DROP TABLE IF EXISTS payments CASCADE;
+DROP TABLE IF EXISTS plan_payments CASCADE;
+DROP TABLE IF EXISTS notifications CASCADE;
+DROP TABLE IF EXISTS email_logs CASCADE;
+DROP TABLE IF EXISTS system_logs CASCADE;
+DROP TABLE IF EXISTS password_reset_tokens CASCADE;
+DROP TABLE IF EXISTS price_alerts CASCADE;
+DROP TABLE IF EXISTS market_research_queries CASCADE;
+DROP TABLE IF EXISTS reviews CASCADE;
+DROP TABLE IF EXISTS disputes CASCADE;
+
 CREATE TABLE IF NOT EXISTS plans (
     id SERIAL PRIMARY KEY,
     nome VARCHAR(30) NOT NULL UNIQUE,
