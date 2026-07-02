@@ -442,6 +442,52 @@ function init_database(PDO $pdo): void
             id VARCHAR(120) PRIMARY KEY,
             applied_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+        CREATE TABLE IF NOT EXISTS device_market_prices (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            brand VARCHAR(100) NOT NULL,
+            model VARCHAR(200) NOT NULL,
+            storage VARCHAR(50) NOT NULL,
+            color VARCHAR(100) NULL,
+            average_market_value DECIMAL(10,2) NOT NULL,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            active TINYINT(1) DEFAULT 1,
+            INDEX idx_brand (brand),
+            INDEX idx_model (model),
+            INDEX idx_storage (storage),
+            INDEX idx_brand_model_storage (brand, model, storage)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+        CREATE TABLE IF NOT EXISTS device_market_suggestions (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            user_id INT UNSIGNED NOT NULL,
+            brand VARCHAR(100) NOT NULL,
+            model VARCHAR(200) NOT NULL,
+            storage VARCHAR(50) NOT NULL,
+            suggested_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            status ENUM('pendente','aceita','recusada') DEFAULT 'pendente',
+            INDEX idx_user_id (user_id),
+            CONSTRAINT fk_suggestions_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+        CREATE TABLE IF NOT EXISTS trade_simulations (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            user_id INT UNSIGNED NOT NULL,
+            device_market_price_id INT NULL,
+            brand VARCHAR(100) NOT NULL,
+            model VARCHAR(200) NOT NULL,
+            storage VARCHAR(50) NOT NULL,
+            product_sale_value DECIMAL(10,2) NOT NULL,
+            market_value DECIMAL(10,2) NULL,
+            condition_factor VARCHAR(20) NOT NULL,
+            condition_value DECIMAL(10,2) NULL,
+            complement_value DECIMAL(10,2) NULL,
+            simulated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            INDEX idx_user_id (user_id),
+            INDEX idx_simulated_at (simulated_at),
+            CONSTRAINT fk_simulations_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
     ");
 
     ensure_schema_updates($pdo);
@@ -468,6 +514,7 @@ function ensure_schema_updates(PDO $pdo): void
         'retirada_instrucao' => 'TEXT NULL AFTER entrega_complemento',
         'asaas_customer_id' => 'VARCHAR(80) NULL AFTER duplicate_warnings',
         'asaas_wallet_id' => 'VARCHAR(80) NULL AFTER asaas_customer_id',
+        'referral_code_used' => 'VARCHAR(20) NULL',
     ];
     foreach ($userColumns as $column => $definition) {
         $stmt = $pdo->prepare('SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = "users" AND COLUMN_NAME = ?');
@@ -631,6 +678,19 @@ function seed_database(PDO $pdo): void
             array_splice($sample, 19, 0, [$sample[18]]);
             $stmt->execute($sample);
         }
+    }
+
+    // Seed device market prices if empty
+    $countDevicePrices = (int)$pdo->query('SELECT COUNT(*) FROM device_market_prices')->fetchColumn();
+    if ($countDevicePrices === 0) {
+        $stmtDevice = $pdo->prepare('INSERT INTO device_market_prices (brand, model, storage, average_market_value, active) VALUES (?, ?, ?, ?, 1)');
+        $stmtDevice->execute(['Apple', 'iPhone 13', '128GB', 2900.00]);
+        $stmtDevice->execute(['Samsung', 'Galaxy S23', '256GB', 2500.00]);
+        $stmtDevice->execute(['Apple', 'iPhone 14 Pro', '256GB', 4800.00]);
+        $stmtDevice->execute(['Apple', 'iPhone 15 Pro Max', '256GB', 6200.00]);
+        $stmtDevice->execute(['Samsung', 'Galaxy S24 Ultra', '512GB', 5500.00]);
+        $stmtDevice->execute(['Apple', 'iPhone 11', '64GB', 1400.00]);
+        $stmtDevice->execute(['Apple', 'iPhone 12', '128GB', 2200.00]);
     }
 
     seed_demo_marketplace($pdo);
@@ -862,9 +922,15 @@ function send_transactional_email(?int $userId, string $to, string $subject, str
     $sent = false;
     $error = null;
     try {
-        $sent = @mail($to, safe_mime_header($subject), $body, implode("\r\n", $headers));
-        if (!$sent) {
-            $error = 'A funcao mail() retornou falso. Verifique o SMTP/sendmail da hospedagem.';
+        if (($config['app_env'] ?? 'local') === 'local') {
+            // Local environment: bypass mail to prevent sendmail timeouts hanging the application
+            $sent = true;
+            $error = 'Email bypassed on local environment.';
+        } else {
+            $sent = @mail($to, safe_mime_header($subject), $body, implode("\r\n", $headers));
+            if (!$sent) {
+                $error = 'A funcao mail() retornou falso. Verifique o SMTP/sendmail da hospedagem.';
+            }
         }
     } catch (Throwable $e) {
         $error = $e->getMessage();

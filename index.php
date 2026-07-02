@@ -663,6 +663,89 @@ function handle_post(): void
         redirect('admin', ['tab' => 'users']);
     }
 
+    if ($action === 'admin_device_price_add') {
+        require_admin();
+        $brand = trim((string)post('brand'));
+        $model = trim((string)post('model'));
+        $storage = trim((string)post('storage'));
+        $color = trim((string)post('color')) ?: null;
+        $value = (float)post('average_market_value');
+        $active = isset($_POST['active']) ? 1 : 0;
+
+        if ($brand !== '' && $model !== '' && $storage !== '') {
+            $stmt = $pdo->prepare('INSERT INTO device_market_prices (brand, model, storage, color, average_market_value, active) VALUES (?, ?, ?, ?, ?, ?)');
+            $stmt->execute([$brand, $model, $storage, $color, $value, $active]);
+            $_SESSION['flash'] = 'Aparelho adicionado à base de preços.';
+        } else {
+            $_SESSION['flash'] = 'Preencha todos os campos obrigatórios.';
+        }
+        redirect('admin', ['tab' => 'device-prices']);
+    }
+
+    if ($action === 'admin_device_price_edit') {
+        require_admin();
+        $id = (int)post('id');
+        $brand = trim((string)post('brand'));
+        $model = trim((string)post('model'));
+        $storage = trim((string)post('storage'));
+        $color = trim((string)post('color')) ?: null;
+        $value = (float)post('average_market_value');
+        $active = isset($_POST['active']) ? 1 : 0;
+
+        if ($brand !== '' && $model !== '' && $storage !== '') {
+            $stmt = $pdo->prepare('UPDATE device_market_prices SET brand=?, model=?, storage=?, color=?, average_market_value=?, active=? WHERE id=?');
+            $stmt->execute([$brand, $model, $storage, $color, $value, $active, $id]);
+            $_SESSION['flash'] = 'Aparelho atualizado com sucesso.';
+        } else {
+            $_SESSION['flash'] = 'Erro ao atualizar. Preencha todos os campos.';
+        }
+        redirect('admin', ['tab' => 'device-prices']);
+    }
+
+    if ($action === 'admin_device_price_delete') {
+        require_admin();
+        $id = (int)post('id');
+        $stmt = $pdo->prepare('DELETE FROM device_market_prices WHERE id=?');
+        $stmt->execute([$id]);
+        $_SESSION['flash'] = 'Aparelho removido da base de preços.';
+        redirect('admin', ['tab' => 'device-prices']);
+    }
+
+    if ($action === 'admin_device_price_suggestion_action') {
+        require_admin();
+        $id = (int)post('suggestion_id');
+        $status = post('status');
+        
+        if (in_array($status, ['aceita', 'recusada'], true)) {
+            $pdo->prepare('UPDATE device_market_suggestions SET status=? WHERE id=?')->execute([$status, $id]);
+            
+            if ($status === 'aceita') {
+                $stmt = $pdo->prepare('SELECT * FROM device_market_suggestions WHERE id=?');
+                $stmt->execute([$id]);
+                $sug = $stmt->fetch();
+                if ($sug) {
+                    $brand = $sug['brand'];
+                    $model = $sug['model'];
+                    $storage = $sug['storage'];
+                    $value = (float)post('average_market_value', 0.0);
+                    
+                    $check = $pdo->prepare('SELECT COUNT(*) FROM device_market_prices WHERE brand=? AND model=? AND storage=?');
+                    $check->execute([$brand, $model, $storage]);
+                    if ((int)$check->fetchColumn() === 0) {
+                        $pdo->prepare('INSERT INTO device_market_prices (brand, model, storage, average_market_value, active) VALUES (?, ?, ?, ?, 1)')
+                            ->execute([$brand, $model, $storage, $value]);
+                        $_SESSION['flash'] = 'Sugestão aceita e aparelho adicionado à base de preços.';
+                    } else {
+                        $_SESSION['flash'] = 'Sugestão marcada como aceita (aparelho já existia na base).';
+                    }
+                }
+            } else {
+                $_SESSION['flash'] = 'Sugestão recusada.';
+            }
+        }
+        redirect('admin', ['tab' => 'device-prices']);
+    }
+
     if ($action === 'admin_delete_product') {
         require_admin();
         error_log("admin_delete_product called with POST: " . print_r($_POST, true));
@@ -875,12 +958,12 @@ function app_nav(array $user): void
 {
     $admin = $user['role'] === 'admin';
     $items = $admin
-        ? ['admin' => 'Dashboard', 'admin&tab=users' => 'Lojistas', 'admin&tab=approvals' => 'Aprovações', 'admin&tab=products' => 'Anúncios', 'admin&tab=sales' => 'Vendas', 'admin&tab=disputes' => 'Disputas', 'admin&tab=logs' => 'Logs', 'admin&tab=reports' => 'Relatórios', 'admin&tab=plans' => 'Planos', 'admin&tab=settings' => 'Configurações']
-        : ['dashboard' => 'Início', 'feed' => 'Buscar', 'new-product' => 'Anunciar', 'my-products' => 'Meus anúncios', 'market-research' => 'Pesquisa Mercado', 'inventory' => 'Estoque', 'price-alerts' => 'Alertas', 'offers' => 'Ofertas', 'sales' => 'Vendas', 'purchases' => 'Compras', 'finance' => 'Financeiro', 'notifications' => 'Notificações', 'referrals' => 'Indicações', 'profile' => 'Perfil', 'plans' => 'Plano'];
+        ? ['admin' => 'Dashboard', 'admin&tab=users' => 'Lojistas', 'admin&tab=approvals' => 'Aprovações', 'admin&tab=products' => 'Anúncios', 'admin&tab=sales' => 'Vendas', 'admin&tab=disputes' => 'Disputas', 'admin&tab=logs' => 'Logs', 'admin&tab=reports' => 'Relatórios', 'admin&tab=plans' => 'Planos', 'admin&tab=device-prices' => 'Preços de Mercado', 'admin&tab=settings' => 'Configurações']
+        : ['dashboard' => 'Início', 'feed' => 'Buscar', 'new-product' => 'Anunciar', 'my-products' => 'Meus anúncios', 'market-research' => 'Pesquisa Mercado', 'inventory' => 'Estoque', 'trade-simulation' => 'Simular Troca', 'price-alerts' => 'Alertas', 'offers' => 'Ofertas', 'sales' => 'Vendas', 'purchases' => 'Compras', 'finance' => 'Financeiro', 'notifications' => 'Notificações', 'referrals' => 'Indicações', 'profile' => 'Perfil', 'plans' => 'Plano'];
     
     $icons = [
-        'Dashboard' => 'ph-squares-four', 'Lojistas' => 'ph-users', 'Aprovações' => 'ph-check-circle', 'Anúncios' => 'ph-device-mobile', 'Vendas' => 'ph-currency-dollar', 'Disputas' => 'ph-warning-circle', 'Logs' => 'ph-terminal-window', 'Relatórios' => 'ph-chart-line-up', 'Planos' => 'ph-star', 'Configurações' => 'ph-gear',
-        'Início' => 'ph-house', 'Buscar' => 'ph-magnifying-glass', 'Anunciar' => 'ph-plus-circle', 'Meus anúncios' => 'ph-list-dashes', 'Pesquisa Mercado' => 'ph-trend-up', 'Estoque' => 'ph-package', 'Alertas' => 'ph-bell-ringing', 'Ofertas' => 'ph-handshake', 'Compras' => 'ph-shopping-bag', 'Financeiro' => 'ph-wallet', 'Notificações' => 'ph-bell', 'Indicações' => 'ph-users-three', 'Perfil' => 'ph-user', 'Plano' => 'ph-crown'
+        'Dashboard' => 'ph-squares-four', 'Lojistas' => 'ph-users', 'Aprovações' => 'ph-check-circle', 'Anúncios' => 'ph-device-mobile', 'Vendas' => 'ph-currency-dollar', 'Disputas' => 'ph-warning-circle', 'Logs' => 'ph-terminal-window', 'Relatórios' => 'ph-chart-line-up', 'Planos' => 'ph-star', 'Preços de Mercado' => 'ph-tag', 'Configurações' => 'ph-gear',
+        'Início' => 'ph-house', 'Buscar' => 'ph-magnifying-glass', 'Anunciar' => 'ph-plus-circle', 'Meus anúncios' => 'ph-list-dashes', 'Pesquisa Mercado' => 'ph-trend-up', 'Estoque' => 'ph-package', 'Simular Troca' => 'ph-arrows-left-right', 'Alertas' => 'ph-bell-ringing', 'Ofertas' => 'ph-handshake', 'Compras' => 'ph-shopping-bag', 'Financeiro' => 'ph-wallet', 'Notificações' => 'ph-bell', 'Indicações' => 'ph-users-three', 'Perfil' => 'ph-user', 'Plano' => 'ph-crown'
     ];
 
     echo '<aside class="sidebar">' . logo() . '<nav>';
@@ -891,7 +974,7 @@ function app_nav(array $user): void
     echo '</nav><form method="post"><input type="hidden" name="action" value="logout"><button class="ghost full" style="margin-top: auto;"><i class="ph ph-sign-out" style="font-size: 1.25rem; margin-right: 8px;"></i> Sair</button></form></aside><nav class="mobile-nav">';
     foreach (array_slice($items, 0, 5) as $route => $label) {
         $icon = $icons[$label] ?? 'ph-circle';
-        echo '<a href="index.php?p=' . e($route) . '"><i class="ph ' . $icon . '" style="font-size: 1.5rem;"></i></a>';
+        echo '<a href="index.php?p=' . e($route) . '" class="' . current_route($route) . '" style="display:flex; flex-direction:column; align-items:center; justify-content:center;"><i class="ph ' . $icon . '" style="font-size: 1.4rem;"></i><span style="font-size: 0.65rem; margin-top: 3px; font-weight: 500;">' . e($label) . '</span></a>';
     }
     echo '</nav>';
 }
@@ -1095,6 +1178,37 @@ switch ($page) {
         metric_card('Taxa de cancelamento', number_format((float)$user['taxa_cancelamento'],1,',','.').'%', '', 'ph-warning-circle');
         metric_card('Avaliação média', number_format((float)$user['nota_geral'],1,',','.'), '', 'ph-star');
         echo '</section>';
+
+        if ($user['plano'] === 'Elite') {
+            $modelos_cadastrados = (int)$pdo->query('SELECT COUNT(*) FROM device_market_prices WHERE active=1')->fetchColumn();
+            
+            $sim_stmt = $pdo->prepare('SELECT COUNT(*) FROM trade_simulations WHERE user_id=?');
+            $sim_stmt->execute([$user['id']]);
+            $simulacoes_realizadas = (int)$sim_stmt->fetchColumn();
+            
+            $total_stmt = $pdo->prepare('SELECT COALESCE(SUM(condition_value), 0) FROM trade_simulations WHERE user_id=?');
+            $total_stmt->execute([$user['id']]);
+            $valor_total_trocas = (float)$total_stmt->fetchColumn();
+            
+            $avg_stmt = $pdo->prepare('SELECT COALESCE(AVG(condition_value), 0) FROM trade_simulations WHERE user_id=?');
+            $avg_stmt->execute([$user['id']]);
+            $valor_medio_troca = (float)$avg_stmt->fetchColumn();
+            
+            $top_stmt = $pdo->prepare('SELECT CONCAT(brand, " ", model) as name, COUNT(*) as qty FROM trade_simulations WHERE user_id=? GROUP BY brand, model ORDER BY qty DESC LIMIT 1');
+            $top_stmt->execute([$user['id']]);
+            $top_model = $top_stmt->fetch();
+            $modelo_mais_usado = $top_model ? $top_model['name'] . ' (' . $top_model['qty'] . 'x)' : 'Sem dados';
+            
+            echo '<div style="margin-top: 2.5rem; margin-bottom: 1rem;"><span class="eyebrow" style="color:#F59E0B;"><i class="ph ph-crown" style="margin-right:4px;"></i> Exclusivo Elite</span><h2>Dashboard de Trocas e Usados</h2></div>';
+            echo '<section class="metric-grid" style="margin-bottom: 2rem; display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1.5rem;">';
+            metric_card('Modelos Cadastrados', (string)$modelos_cadastrados, '', 'ph-device-mobile');
+            metric_card('Simulações Realizadas', (string)$simulacoes_realizadas, '', 'ph-arrows-left-right');
+            metric_card('Valor Total Negociado', money($valor_total_trocas), '', 'ph-currency-dollar');
+            metric_card('Valor Médio de Troca', money($valor_medio_troca), '', 'ph-scales');
+            metric_card('Modelo Mais Simulado', $modelo_mais_usado, '', 'ph-trend-up');
+            echo '</section>';
+        }
+
         echo '<div class="chart-container-premium animate-entry"><div class="chart-header"><span class="chart-title"><i class="ph ph-chart-line-up" style="color: var(--blue-2); font-size: 1.5rem;"></i> Evolução de Faturamento</span><span class="chip" style="background: rgba(0, 102, 255, 0.1); border-color: var(--blue); color: var(--blue-2);">Mês atual</span></div><div style="height: 250px; width: 100%;"><canvas id="lojistaChart"></canvas></div></div>';
         echo '<section class="panel-grid" style="margin-top: 32px;"><div class="panel premium-panel animate-entry"><h2>Nível atual</h2><div class="level big ' . level_class($user['nivel']) . '">' . e($user['nivel']) . '</div><div class="progress"><span style="width:' . $levelProgress . '%"></span></div><p>Progresso calculado por reputação, vendas, compras, SLA, cancelamentos, score e recorrência.</p><p class="muted">Vendas abertas agora: ' . (int)$openSales->fetchColumn() . '</p></div><div class="panel animate-entry"><h2>Eventos em tempo real</h2>';
         notifications_list((int)$user['id']);
@@ -1144,6 +1258,9 @@ switch ($page) {
     case 'price-alerts':
         render_price_alerts_page();
         break;
+    case 'trade-simulation':
+        render_trade_simulation_page();
+        break;
     case 'referrals':
         render_referrals_page();
         break;
@@ -1168,10 +1285,8 @@ switch ($page) {
     case 'finance':
     case 'notifications':
     case 'profile':
-        render_generic_app_page($page);
-        break;
     case 'plans':
-        render_subscriptions_page();
+        render_generic_app_page($page);
         break;
     case 'edit-profile':
         render_edit_profile_page();
@@ -1556,6 +1671,48 @@ function render_generic_app_page(string $page): void
             echo '<div class="plan ' . ($current ? 'popular' : '') . '"><h2>' . e($p['nome']) . '</h2><strong>' . e($subtitle) . '</strong><p>' . e($limit) . '</p><ul><li>Compra e venda entre lojistas aprovados</li><li>' . ((int)$p['filtros_avancados'] ? 'Filtros avançados por cidade, estado e região' : 'Busca padrão por cidade e filtros básicos') . '</li><li>PDV, ofertas, reputação e análise de mercado</li><li>Pix com gateway e repasse protegido</li></ul><form method="post"><input type="hidden" name="action" value="pay_plan"><input type="hidden" name="plan_id" value="' . (int)$p['id'] . '"><button class="button full">' . ($monthly > 0 ? ($current ? 'Renovar plano' : 'Assinar plano') : 'Usar Free') . '</button></form><p class="muted">' . ((int)($p['especial'] ?? 0) ? 'Plano parceiro especial configurado pelo admin.' : 'Taxas editáveis pelo admin master.') . '</p></div>';
         }
         echo '</section>';
+    } elseif ($page === 'referrals') {
+        $referralCode = substr(md5((string)$user['id'] . 'lojist2026'), 0, 10);
+        $referralLink = app_url('register') . '&ref=' . $referralCode;
+        $totalReferrals = (int)$pdo->prepare('SELECT COUNT(*) FROM users WHERE referral_code_used=?') ? 0 : 0;
+        // Query referrals if column exists
+        try {
+            $refStmt = $pdo->prepare('SELECT COUNT(*) FROM users WHERE referral_code_used=?');
+            $refStmt->execute([$referralCode]);
+            $totalReferrals = (int)$refStmt->fetchColumn();
+        } catch (\Exception $e) {
+            $totalReferrals = 0;
+        }
+        $approvedReferrals = 0;
+        try {
+            $apprStmt = $pdo->prepare('SELECT COUNT(*) FROM users WHERE referral_code_used=? AND status_conta="aprovado"');
+            $apprStmt->execute([$referralCode]);
+            $approvedReferrals = (int)$apprStmt->fetchColumn();
+        } catch (\Exception $e) {
+            $approvedReferrals = 0;
+        }
+        echo '<div class="page-head"><div><span class="eyebrow">Indicações</span><h1>Indique e ganhe</h1><p class="page-subtitle">Compartilhe seu link exclusivo. Quando um novo lojista for aprovado via sua indicação, ambos ganham vantagens na plataforma.</p></div></div>';
+        echo '<section class="metric-grid">';
+        metric_card('Seu código', strtoupper($referralCode), 'Exclusivo e intransferível', 'ph-fingerprint');
+        metric_card('Indicações enviadas', (string)$totalReferrals, 'Total de cadastros via seu link', 'ph-users-three');
+        metric_card('Indicações aprovadas', (string)$approvedReferrals, 'Lojistas aprovados que você indicou', 'ph-check-circle');
+        echo '</section>';
+        echo '<div class="panel" style="margin-top: 24px;">';
+        echo '<h2>Seu link de indicação</h2>';
+        echo '<p style="color: #A0AEC0; margin-bottom: 16px;">Compartilhe o link abaixo com outros lojistas do mercado mobile. O link já preenche automaticamente seu código ao solicitar acesso.</p>';
+        echo '<div style="display: flex; align-items: center; gap: 12px; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; padding: 14px 18px;">';
+        echo '<code id="referral-link-text" style="flex: 1; color: #60A5FA; font-size: 0.9rem; word-break: break-all;">' . e($referralLink) . '</code>';
+        echo '<button onclick="navigator.clipboard.writeText(\'' . e($referralLink) . '\').then(() => { this.innerHTML=\'<i class=\\\'ph ph-check\\\' style=\\\'margin-right:4px\\\'></i> Copiado!\'; setTimeout(() => this.innerHTML=\'<i class=\\\'ph ph-copy\\\' style=\\\'margin-right:4px\\\'></i> Copiar\', 2000); })" class="button small" style="white-space: nowrap;"><i class="ph ph-copy" style="margin-right:4px;"></i> Copiar</button>';
+        echo '</div>';
+        echo '</div>';
+        echo '<div class="panel" style="margin-top: 24px;">';
+        echo '<h2>Como funciona</h2>';
+        echo '<div style="display: flex; flex-direction: column; gap: 16px; margin-top: 8px;">';
+        echo '<div style="display: flex; align-items: flex-start; gap: 16px;"><span style="width: 32px; height: 32px; border-radius: 50%; background: var(--blue); display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 0.85rem; flex-shrink: 0;">1</span><div><strong style="color: white;">Compartilhe seu link</strong><p style="color: #9CA3AF; margin: 4px 0 0; font-size: 0.9rem;">Envie seu link exclusivo para lojistas do mercado mobile que ainda não têm acesso à plataforma.</p></div></div>';
+        echo '<div style="display: flex; align-items: flex-start; gap: 16px;"><span style="width: 32px; height: 32px; border-radius: 50%; background: var(--blue); display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 0.85rem; flex-shrink: 0;">2</span><div><strong style="color: white;">Eles solicitam acesso</strong><p style="color: #9CA3AF; margin: 4px 0 0; font-size: 0.9rem;">O lojista preenche o formulário com seu código já vinculado automaticamente e aguarda aprovação do admin.</p></div></div>';
+        echo '<div style="display: flex; align-items: flex-start; gap: 16px;"><span style="width: 32px; height: 32px; border-radius: 50%; background: var(--blue); display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 0.85rem; flex-shrink: 0;">3</span><div><strong style="color: white;">Ambos ganham</strong><p style="color: #9CA3AF; margin: 4px 0 0; font-size: 0.9rem;">Após a aprovação, você e o indicado recebem benefícios na plataforma. Quanto mais indicações aprovadas, maior sua reputação.</p></div></div>';
+        echo '</div>';
+        echo '</div>';
     }
     layout_end();
 }
@@ -1635,6 +1792,120 @@ function render_admin(): void
         echo '<form method="post" class="panel"><input type="hidden" name="action" value="admin_plan"><div class="table-wrap"><table><thead><tr><th>Plano</th><th>Taxa %</th><th>Limite ativos</th><th>Filtros avançados</th><th>Mensalidade</th><th>Ativo</th></tr></thead><tbody>';
         foreach ($plans as $p) { echo '<tr><td>' . e($p['nome']) . ((int)($p['especial'] ?? 0) ? '<small>Especial parceiro</small>' : '') . '</td><td><input name="plans[' . (int)$p['id'] . '][taxa]" value="' . e((string)$p['taxa']) . '"></td><td><input name="plans[' . (int)$p['id'] . '][limite_anuncios]" value="' . e((string)$p['limite_anuncios']) . '" placeholder="Ilimitado"></td><td><input type="checkbox" name="plans[' . (int)$p['id'] . '][filtros_avancados]" ' . ((int)$p['filtros_avancados'] ? 'checked' : '') . '></td><td><input name="plans[' . (int)$p['id'] . '][preco_mensal]" value="' . e((string)$p['preco_mensal']) . '"></td><td><input type="checkbox" name="plans[' . (int)$p['id'] . '][ativo]" ' . ((int)$p['ativo'] ? 'checked' : '') . '></td></tr>'; }
         echo '</tbody></table></div><button class="button">Salvar planos</button></form><form method="post" class="panel form-grid"><input type="hidden" name="action" value="admin_add_plan"><h2 class="full">Adicionar plano especial parceiro</h2><label>Nome<input required name="nome" placeholder="Parceiro Diamond CG"></label><label>Taxa %<input required name="taxa" type="number" step="0.01" value="0.9"></label><label>Mensalidade<input required name="preco_mensal" type="number" step="0.01" value="149.90"></label><label>Limite anúncios<input name="limite_anuncios" placeholder="Ilimitado"></label><label class="check"><input type="checkbox" name="filtros_avancados" checked> Filtros avançados</label><button class="button full">Criar plano especial</button></form>';
+    } elseif ($tab === 'device-prices') {
+        $search = trim((string)($_GET['q_search'] ?? ''));
+        $brand_filter = trim((string)($_GET['brand_filter'] ?? ''));
+        
+        $where = [];
+        $args = [];
+        if ($search !== '') {
+            $where[] = '(model LIKE ? OR brand LIKE ?)';
+            $args[] = "%{$search}%";
+            $args[] = "%{$search}%";
+        }
+        if ($brand_filter !== '') {
+            $where[] = 'brand = ?';
+            $args[] = $brand_filter;
+        }
+        
+        $whereSql = $where ? 'WHERE ' . implode(' AND ', $where) : '';
+        
+        [$rows, $total] = paged_query($pdo, "SELECT * FROM device_market_prices $whereSql ORDER BY brand, model, storage, id DESC", "SELECT COUNT(*) FROM device_market_prices $whereSql", $args);
+        
+        $suggestions = $pdo->query('SELECT s.*, u.nome_loja FROM device_market_suggestions s JOIN users u ON u.id=s.user_id WHERE s.status="pendente" ORDER BY s.suggested_at DESC')->fetchAll();
+        
+        $editDevice = null;
+        if (isset($_GET['edit_id'])) {
+            $editStmt = $pdo->prepare('SELECT * FROM device_market_prices WHERE id=?');
+            $editStmt->execute([(int)$_GET['edit_id']]);
+            $editDevice = $editStmt->fetch();
+        }
+        
+        echo '<section class="metric-grid">';
+        metric_card('Aparelhos na Base', (string)$pdo->query('SELECT COUNT(*) FROM device_market_prices')->fetchColumn(), '', 'ph-tag');
+        metric_card('Sugestões Pendentes', (string)count($suggestions), '', 'ph-lightbulb');
+        echo '</section>';
+        
+        if ($editDevice) {
+            echo '<form method="post" class="panel form-grid"><input type="hidden" name="action" value="admin_device_price_edit"><input type="hidden" name="id" value="' . (int)$editDevice['id'] . '"><h2 class="full">Editar Referência de Mercado</h2>';
+            echo '<label>Marca <select name="brand" required><option value="Apple" ' . ($editDevice['brand'] === 'Apple' ? 'selected' : '') . '>Apple</option><option value="Samsung" ' . ($editDevice['brand'] === 'Samsung' ? 'selected' : '') . '>Samsung</option><option value="Xiaomi" ' . ($editDevice['brand'] === 'Xiaomi' ? 'selected' : '') . '>Xiaomi</option><option value="Motorola" ' . ($editDevice['brand'] === 'Motorola' ? 'selected' : '') . '>Motorola</option></select></label>';
+            echo '<label>Modelo <input required name="model" value="' . e($editDevice['model']) . '" placeholder="Ex: iPhone 13"></label>';
+            echo '<label>Armazenamento <input required name="storage" value="' . e($editDevice['storage']) . '" placeholder="Ex: 128GB"></label>';
+            echo '<label>Cor (Opcional) <input name="color" value="' . e((string)$editDevice['color']) . '" placeholder="Ex: Azul"></label>';
+            echo '<label>Valor Médio de Mercado (R$) <input required type="number" step="0.01" name="average_market_value" value="' . (float)$editDevice['average_market_value'] . '"></label>';
+            echo '<label class="check" style="margin-top: 2rem;"><input type="checkbox" name="active" value="1" ' . ($editDevice['active'] ? 'checked' : '') . '> Referência Ativa</label>';
+            echo '<div class="full" style="display:flex; gap:12px; margin-top:1rem;"><button class="button">Salvar Alterações</button><a href="index.php?p=admin&tab=device-prices" class="button ghost">Cancelar</a></div></form>';
+        } else {
+            echo '<form method="post" class="panel form-grid"><input type="hidden" name="action" value="admin_device_price_add"><h2 class="full">Adicionar Novo Aparelho na Base</h2>';
+            echo '<label>Marca <select name="brand" required><option value="Apple">Apple</option><option value="Samsung">Samsung</option><option value="Xiaomi">Xiaomi</option><option value="Motorola">Motorola</option></select></label>';
+            echo '<label>Modelo <input required name="model" placeholder="Ex: iPhone 13"></label>';
+            echo '<label>Armazenamento <input required name="storage" placeholder="Ex: 128GB"></label>';
+            echo '<label>Cor (Opcional) <input name="color" placeholder="Ex: Azul"></label>';
+            echo '<label>Valor Médio de Mercado (R$) <input required type="number" step="0.01" name="average_market_value" placeholder="2900.00"></label>';
+            echo '<label class="check" style="margin-top: 2rem;"><input type="checkbox" name="active" value="1" checked> Referência Ativa</label>';
+            echo '<button class="button full" style="margin-top: 1rem;">Adicionar Referência</button></form>';
+        }
+        
+        if ($suggestions) {
+            echo '<section class="panel"><h2>Sugestões de Lojistas Elite</h2><div class="table-wrap"><table><thead><tr><th>Lojista</th><th>Aparelho Sugerido</th><th>Data da Sugestão</th><th>Ação</th></tr></thead><tbody>';
+            foreach ($suggestions as $sug) {
+                echo '<tr>';
+                echo '<td>' . e($sug['nome_loja']) . '</td>';
+                echo '<td><strong>' . e($sug['brand']) . ' ' . e($sug['model']) . ' ' . e($sug['storage']) . '</strong></td>';
+                echo '<td>' . date('d/m/Y H:i', strtotime($sug['suggested_at'])) . '</td>';
+                echo '<td>';
+                echo '<form method="post" class="form-grid" style="box-shadow:none; border:none; padding:0; margin:0; display:flex; align-items:center; gap:8px;">';
+                echo '<input type="hidden" name="action" value="admin_device_price_suggestion_action">';
+                echo '<input type="hidden" name="suggestion_id" value="' . (int)$sug['id'] . '">';
+                echo '<input required type="number" step="0.01" name="average_market_value" placeholder="Definir Valor R$" style="width:140px; margin:0; background:rgba(255,255,255,0.05); color:white; border:1px solid rgba(255,255,255,0.1); border-radius:8px; padding:6px 12px;">';
+                echo '<button class="button small" name="status" value="aceita">Aprovar e Add</button>';
+                echo '<button class="danger small" name="status" value="recusada">Recusar</button>';
+                echo '</form>';
+                echo '</td>';
+                echo '</tr>';
+            }
+            echo '</tbody></table></div></section>';
+        }
+        
+        echo '<section class="panel">';
+        echo '<h2>Base de Referência de Preços</h2>';
+        echo '<form method="get" class="filter-bar" style="margin-bottom: 20px;">';
+        echo '<input type="hidden" name="p" value="admin">';
+        echo '<input type="hidden" name="tab" value="device-prices">';
+        echo '<select name="brand_filter"><option value="">Todas as Marcas</option><option value="Apple" ' . ($brand_filter === 'Apple' ? 'selected' : '') . '>Apple</option><option value="Samsung" ' . ($brand_filter === 'Samsung' ? 'selected' : '') . '>Samsung</option><option value="Xiaomi" ' . ($brand_filter === 'Xiaomi' ? 'selected' : '') . '>Xiaomi</option><option value="Motorola" ' . ($brand_filter === 'Motorola' ? 'selected' : '') . '>Motorola</option></select>';
+        echo '<input name="q_search" value="' . e($search) . '" placeholder="Buscar por modelo...">';
+        echo '<button class="button small">Filtrar</button>';
+        echo '<a href="index.php?p=admin&tab=device-prices" class="ghost small">Limpar</a>';
+        echo '</form>';
+        
+        echo '<div class="table-wrap"><table><thead><tr><th>Marca</th><th>Modelo</th><th>Armazenamento</th><th>Cor</th><th>Valor de Mercado</th><th>Última Atualização</th><th>Status</th><th>Ações</th></tr></thead><tbody>';
+        foreach ($rows as $row) {
+            echo '<tr>';
+            echo '<td>' . e($row['brand']) . '</td>';
+            echo '<td><strong>' . e($row['model']) . '</strong></td>';
+            echo '<td>' . e($row['storage']) . '</td>';
+            echo '<td>' . e($row['color'] ?: 'Qualquer cor') . '</td>';
+            echo '<td>' . money((float)$row['average_market_value']) . '</td>';
+            echo '<td>' . date('d/m/Y H:i', strtotime($row['updated_at'])) . '</td>';
+            echo '<td><span class="chip ' . ($row['active'] ? 'success-chip' : 'danger-chip') . '">' . ($row['active'] ? 'Ativo' : 'Inativo') . '</span></td>';
+            echo '<td>';
+            echo '<div style="display:flex; gap:8px;">';
+            echo '<a href="index.php?p=admin&tab=device-prices&edit_id=' . (int)$row['id'] . '" class="button small">Editar</a>';
+            echo '<form method="post" style="display:inline;" onsubmit="return confirm(\'Deseja mesmo excluir esta referência?\')">';
+            echo '<input type="hidden" name="action" value="admin_device_price_delete">';
+            echo '<input type="hidden" name="id" value="' . (int)$row['id'] . '">';
+            echo '<button class="danger small">Excluir</button>';
+            echo '</form>';
+            echo '</div>';
+            echo '</td>';
+            echo '</tr>';
+        }
+        if (!$rows) {
+            echo '<tr><td colspan="8" class="text-center" style="padding: 2rem; color: #666;">Nenhum aparelho cadastrado na base de preços.</td></tr>';
+        }
+        echo '</tbody></table></div>';
+        pagination_links($total);
+        echo '</section>';
     } elseif ($tab === 'settings') {
         $counts = [
             'Usuários que serão removidos' => (int)$pdo->query('SELECT COUNT(*) FROM users WHERE id <> ' . (int)$adminUser['id'])->fetchColumn(),

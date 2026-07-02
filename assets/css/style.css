@@ -1783,10 +1783,15 @@ td small { display: block; color: var(--muted); margin-top: 4px; line-height: 1.
     .mobile-nav a {
         text-align: center;
         font-size: .72rem;
-        color: #d6e3f3;
+        color: #7f91aa;
         padding: 9px 4px;
         border-radius: 8px;
-        background: rgba(255,255,255,.04);
+        background: rgba(255,255,255,.02);
+        transition: all 0.2s;
+    }
+    .mobile-nav a.active {
+        color: var(--blue);
+        background: rgba(0,102,255,.1);
     }
     .gallery { min-height: 420px; }
 }

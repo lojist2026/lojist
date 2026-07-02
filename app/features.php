@@ -168,6 +168,97 @@ function features_handle_action(PDO $pdo, string $action): void
         }
         redirect('plans');
     }
+
+    if ($action === 'simulate_trade') {
+        if ($user['plano'] !== 'Elite') {
+            $_SESSION['flash'] = 'A Simulação de Troca é exclusiva do plano Elite.';
+            redirect('plans');
+        }
+        $sale_value = (float)post('product_sale_value');
+        $brand = trim((string)post('brand'));
+        $model = trim((string)post('model'));
+        $storage = trim((string)post('storage'));
+        $condition = post('condition');
+        $manual_value = post('manual_market_value') !== '' ? (float)post('manual_market_value') : null;
+        
+        $factors = ['excelente' => 1.0, 'bom' => 0.9, 'regular' => 0.75, 'ruim' => 0.6];
+        $factor = $factors[$condition] ?? 1.0;
+        
+        $stmt = $pdo->prepare('SELECT * FROM device_market_prices WHERE brand=? AND model=? AND storage=? AND active=1 LIMIT 1');
+        $stmt->execute([$brand, $model, $storage]);
+        $device = $stmt->fetch();
+        
+        if ($device) {
+            $market_value = (float)$device['average_market_value'];
+            $condition_value = $market_value * $factor;
+            $complement_value = max(0.0, $sale_value - $condition_value);
+            
+            $ins = $pdo->prepare('INSERT INTO trade_simulations (user_id, device_market_price_id, brand, model, storage, product_sale_value, market_value, condition_factor, condition_value, complement_value) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
+            $ins->execute([$user['id'], $device['id'], $brand, $model, $storage, $sale_value, $market_value, $condition, $condition_value, $complement_value]);
+            
+            redirect('trade-simulation', [
+                'simulated' => 1,
+                'sale_value' => $sale_value,
+                'brand' => $brand,
+                'model' => $model,
+                'storage' => $storage,
+                'condition' => $condition,
+                'market_value' => $market_value,
+                'condition_value' => $condition_value,
+                'complement_value' => $complement_value,
+                'found' => 1
+            ]);
+        } else {
+            if ($manual_value !== null) {
+                $condition_value = $manual_value * $factor;
+                $complement_value = max(0.0, $sale_value - $condition_value);
+                
+                $ins = $pdo->prepare('INSERT INTO trade_simulations (user_id, device_market_price_id, brand, model, storage, product_sale_value, market_value, condition_factor, condition_value, complement_value) VALUES (?, NULL, ?, ?, ?, ?, ?, ?, ?, ?)');
+                $ins->execute([$user['id'], $brand, $model, $storage, $sale_value, $manual_value, $condition, $condition_value, $complement_value]);
+                
+                redirect('trade-simulation', [
+                    'simulated' => 1,
+                    'sale_value' => $sale_value,
+                    'brand' => $brand,
+                    'model' => $model,
+                    'storage' => $storage,
+                    'condition' => $condition,
+                    'market_value' => $manual_value,
+                    'condition_value' => $condition_value,
+                    'complement_value' => $complement_value,
+                    'found' => 0
+                ]);
+            } else {
+                redirect('trade-simulation', [
+                    'not_found' => 1,
+                    'sale_value' => $sale_value,
+                    'brand' => $brand,
+                    'model' => $model,
+                    'storage' => $storage,
+                    'condition' => $condition
+                ]);
+            }
+        }
+    }
+
+    if ($action === 'suggest_device_price') {
+        if ($user['plano'] !== 'Elite') {
+            $_SESSION['flash'] = 'Apenas lojistas Elite podem sugerir aparelhos.';
+            redirect('plans');
+        }
+        $brand = trim((string)post('brand'));
+        $model = trim((string)post('model'));
+        $storage = trim((string)post('storage'));
+        
+        if ($brand !== '' && $model !== '' && $storage !== '') {
+            $stmt = $pdo->prepare('INSERT INTO device_market_suggestions (user_id, brand, model, storage) VALUES (?, ?, ?, ?)');
+            $stmt->execute([$user['id'], $brand, $model, $storage]);
+            $_SESSION['flash'] = 'Obrigado! Sua sugestão de inclusão foi enviada aos administradores.';
+        } else {
+            $_SESSION['flash'] = 'Preencha todos os campos da sugestão.';
+        }
+        redirect('trade-simulation');
+    }
 }
 
 function render_market_research_page() {
@@ -583,4 +674,150 @@ function render_top_header(array $user) {
             document.head.appendChild(style);
         </script>
     </div>';
+}
+
+function render_trade_simulation_page() {
+    $user = layout_start('Simular Troca');
+    if ($user['plano'] !== 'Elite') {
+        echo '<div class="panel text-center" style="padding: 4rem 2rem;">
+            <i class="ph ph-lock-key" style="font-size: 3rem; color: var(--blue); margin-bottom: 1rem; opacity: 0.8;"></i>
+            <h2>Módulo Exclusivo Elite</h2>
+            <p style="color: #A0AEC0; margin-bottom: 2rem;">A Simulação Inteligente de Troca com base de preços é exclusiva do plano Elite.</p>
+            <a href="index.php?p=plans" class="button">Fazer Upgrade</a>
+        </div>';
+        layout_end(); return;
+    }
+
+    $pdo = db();
+    
+    $simulated = !empty($_GET['simulated']);
+    $not_found = !empty($_GET['not_found']);
+    
+    $sale_value = isset($_GET['sale_value']) ? (float)$_GET['sale_value'] : null;
+    $brand = isset($_GET['brand']) ? (string)$_GET['brand'] : '';
+    $model = isset($_GET['model']) ? (string)$_GET['model'] : '';
+    $storage = isset($_GET['storage']) ? (string)$_GET['storage'] : '';
+    $condition = isset($_GET['condition']) ? (string)$_GET['condition'] : '';
+    
+    $market_value = isset($_GET['market_value']) ? (float)$_GET['market_value'] : null;
+    $condition_value = isset($_GET['condition_value']) ? (float)$_GET['condition_value'] : null;
+    $complement_value = isset($_GET['complement_value']) ? (float)$_GET['complement_value'] : null;
+    
+    echo '<div class="page-head">
+        <div><span class="eyebrow">Funcionalidade Elite</span><h1>Simular Troca Inteligente</h1><p class="page-subtitle">Calcule o valor ideal de aparelhos usados recebidos como parte do pagamento.</p></div>
+    </div>';
+    
+    render_device_datalists();
+    
+    echo '<div style="display: grid; grid-template-columns: 1.2fr 1fr; gap: 2rem; align-items: start; margin-top: 2rem;">';
+    
+    echo '<section class="panel form-grid">
+        <h2 class="full">Dados da Negociação</h2>
+        <form method="post" class="form-grid full" style="margin: 0; padding: 0; border: none; box-shadow: none;">
+            <input type="hidden" name="action" value="simulate_trade">
+            
+            <label class="full">Valor do Produto Vendido (R$) 
+                <input required type="number" step="0.01" name="product_sale_value" value="' . e($sale_value !== null ? (string)$sale_value : '') . '" placeholder="Ex: 7000.00">
+            </label>
+            
+            <label>Marca do Aparelho Recebido 
+                <select name="brand" required>
+                    <option value="Apple" ' . ($brand === 'Apple' ? 'selected' : '') . '>Apple</option>
+                    <option value="Samsung" ' . ($brand === 'Samsung' ? 'selected' : '') . '>Samsung</option>
+                    <option value="Xiaomi" ' . ($brand === 'Xiaomi' ? 'selected' : '') . '>Xiaomi</option>
+                    <option value="Motorola" ' . ($brand === 'Motorola' ? 'selected' : '') . '>Motorola</option>
+                </select>
+            </label>
+            
+            <label>Modelo 
+                <input required name="model" list="deviceModels" value="' . e($model) . '" placeholder="Ex: iPhone 13">
+            </label>
+            
+            <label>Armazenamento 
+                <input required name="storage" list="deviceStorages" value="' . e($storage) . '" placeholder="Ex: 128GB">
+            </label>
+            
+            <label>Condição Geral 
+                <select name="condition" required>
+                    <option value="excelente" ' . ($condition === 'excelente' ? 'selected' : '') . '>Excelente (100% do mercado)</option>
+                    <option value="bom" ' . ($condition === 'bom' ? 'selected' : '') . '>Bom (90% do mercado)</option>
+                    <option value="regular" ' . ($condition === 'regular' ? 'selected' : '') . '>Regular (75% do mercado)</option>
+                    <option value="ruim" ' . ($condition === 'ruim' ? 'selected' : '') . '>Ruim (60% do mercado)</option>
+                </select>
+            </label>';
+            
+            if ($not_found) {
+                echo '<div class="full" style="background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.3); border-radius: 12px; padding: 1rem; margin-bottom: 1rem;">
+                    <p style="color: #EF4444; margin: 0; font-weight: 500; font-size: 0.95rem;">Aparelho não encontrado na base de referência.</p>
+                    <p style="color: #A0AEC0; font-size: 0.85rem; margin: 4px 0 12px 0;">Você pode preencher o valor de mercado manualmente abaixo para calcular ou sugerir sua inclusão.</p>
+                    <label style="display:block; margin:0;"><span style="color:white; display:block; margin-bottom:6px;">Valor Médio de Mercado Manual (R$)</span>
+                        <input required type="number" step="0.01" name="manual_market_value" placeholder="Ex: 2900.00" style="background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.1); color: white; border-radius: 8px; padding: 10px 14px; width: 100%;">
+                    </label>
+                </div>';
+            }
+            
+            echo '<button class="button full" style="margin-top: 1rem;">Calcular Troca</button>
+        </form>';
+        
+        if ($not_found) {
+            echo '<form method="post" class="full" style="margin-top: 1rem; padding:0; border:none; box-shadow:none;">
+                <input type="hidden" name="action" value="suggest_device_price">
+                <input type="hidden" name="brand" value="' . e($brand) . '">
+                <input type="hidden" name="model" value="' . e($model) . '">
+                <input type="hidden" name="storage" value="' . e($storage) . '">
+                <button class="button ghost full" style="border-color: #F59E0B; color: #F59E0B;"><i class="ph ph-lightbulb" style="margin-right:6px;"></i> Sugerir inclusão na base</button>
+            </form>';
+        }
+        
+    echo '</section>';
+    
+    echo '<section class="panel" style="min-height: 380px; display: flex; flex-direction: column; justify-content: center;">';
+    
+    if ($simulated && $market_value !== null) {
+        $condLabels = ['excelente' => 'Excelente (100%)', 'bom' => 'Bom (90%)', 'regular' => 'Regular (75%)', 'ruim' => 'Ruim (60%)'];
+        $condText = $condLabels[$condition] ?? ucfirst($condition);
+        
+        echo '<div>
+            <span class="eyebrow" style="color:var(--blue-2);">Cálculo Efetuado</span>
+            <h2 style="margin-bottom: 1.5rem;">Resultado da Simulação</h2>
+            
+            <div style="background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.05); border-radius: 12px; padding: 1.5rem; margin-bottom: 2rem;">
+                <p style="margin: 0 0 8px 0; color: #A0AEC0; font-size: 0.9rem;">Aparelho de Entrada</p>
+                <strong style="font-size: 1.25rem; color: white;">' . e($brand) . ' ' . e($model) . ' ' . e($storage) . '</strong>
+                <p style="margin: 6px 0 0 0; color: #E2E8F0; font-size: 0.85rem;"><span class="chip" style="background:rgba(255,255,255,0.05);">' . e($condText) . '</span></p>
+            </div>
+            
+            <div style="display: flex; flex-direction: column; gap: 1rem;">
+                <div style="display: flex; justify-content: space-between; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 0.75rem;">
+                    <span style="color:#A0AEC0;">Produto Vendido:</span>
+                    <strong style="color:white;">' . money($sale_value) . '</strong>
+                </div>
+                <div style="display: flex; justify-content: space-between; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 0.75rem;">
+                    <span style="color:#A0AEC0;">Valor Médio de Mercado:</span>
+                    <strong style="color:white;">' . money($market_value) . '</strong>
+                </div>
+                <div style="display: flex; justify-content: space-between; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 0.75rem; align-items: center;">
+                    <span style="color:#A0AEC0;">Valor Considerado (Recebido):</span>
+                    <span style="font-size: 1.15rem; font-weight:700; color: #10B981; background: rgba(16, 185, 129, 0.1); padding: 4px 10px; border-radius: 8px;">' . money($condition_value) . '</span>
+                </div>
+                
+                <div style="margin-top: 1.5rem; background: linear-gradient(135deg, rgba(0, 102, 255, 0.15) 0%, rgba(0, 0, 0, 0) 100%); border: 1px solid rgba(0, 102, 255, 0.25); border-radius: 12px; padding: 1.5rem; text-align: center;">
+                    <span style="color: #93C5FD; font-size: 0.85rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; display: block; margin-bottom: 6px;">Diferença a Complementar</span>
+                    <strong style="font-size: 2.2rem; color: #3B82F6; letter-spacing: -1px; display: block;">' . money($complement_value) . '</strong>
+                    <span style="color: #A0AEC0; font-size: 0.8rem; margin-top: 4px; display: block;">O cliente precisa pagar este valor para concluir a troca.</span>
+                </div>
+            </div>
+        </div>';
+    } else {
+        echo '<div style="text-align: center; color: #666; padding: 2rem;">
+            <i class="ph ph-scales" style="font-size: 3.5rem; color: var(--blue); margin-bottom: 1rem; opacity: 0.4;"></i>
+            <h3>Aguardando Simulação</h3>
+            <p style="font-size: 0.9rem; max-width: 280px; margin: 8px auto 0 auto; color:#A0AEC0;">Preencha os dados à esquerda e clique em "Calcular Troca" para visualizar a análise.</p>
+        </div>';
+    }
+    
+    echo '</section>';
+    echo '</div>';
+    
+    layout_end();
 }
